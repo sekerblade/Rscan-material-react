@@ -1,30 +1,32 @@
-import { Helmet } from 'react-helmet-async';
-import { filter } from 'lodash';
 import { sentenceCase } from 'change-case';
-import { useState } from 'react';
+import { filter } from 'lodash';
+import React, { useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 // @mui
 import {
-  Card,
-  Table,
-  Stack,
-  Paper,
   Avatar,
   Button,
-  Popover,
+  Card,
   Checkbox,
-  TableRow,
+  Container,
+  IconButton,
   MenuItem,
+  Paper,
+  Popover,
+  Stack,
+  Table,
   TableBody,
   TableCell,
-  Container,
-  Typography,
-  IconButton,
   TableContainer,
   TablePagination,
+  TableRow,
+  Typography,
 } from '@mui/material';
 // components
-import Label from '../components/label';
+import Axios from 'axios';
+
 import Iconify from '../components/iconify';
+import Label from '../components/label';
 import Scrollbar from '../components/scrollbar';
 // sections
 import { UserListHead, UserListToolbar } from '../sections/@dashboard/user';
@@ -34,12 +36,12 @@ import USERLIST from '../_mock/user';
 // ----------------------------------------------------------------------
 
 const TABLE_HEAD = [
+  { id: '' },
   { id: 'name', label: 'Name', alignRight: false },
   { id: 'company', label: 'Company', alignRight: false },
   { id: 'role', label: 'Role', alignRight: false },
   { id: 'isVerified', label: 'Verified', alignRight: false },
   { id: 'status', label: 'Status', alignRight: false },
-  { id: '' },
 ];
 
 // ----------------------------------------------------------------------
@@ -74,6 +76,66 @@ function applySortFilter(array, comparator, query) {
 }
 
 export default function UserPage() {
+  const [name, setName] = useState('');
+  const [age, setAge] = useState(0);
+  const [country, setCountry] = useState('');
+  const [position, setPosition] = useState('');
+  const [wage, setWage] = useState(0);
+  const [newWage, setNewWage] = useState(0);
+
+  const [employeeList, setEmployeeList] = useState([]);
+
+  const getEmployees = () => {
+    Axios.get('http://localhost:3001/employees').then((response) => {
+      setEmployeeList(response.data);
+    });
+  };
+
+  const addEmployee = () => {
+    Axios.post('http://localhost:3001/create', {
+      name,
+      age,
+      country,
+      position,
+      wage,
+    }).then(() => {
+      setEmployeeList([
+        ...employeeList,
+        {
+          name,
+          age,
+          country,
+          position,
+          wage,
+        },
+      ]);
+    });
+  };
+
+  const updateEmployeeWage = (id) => {
+    Axios.put('http://localhost:3001/update', { wage: newWage, id }).then((response) => {
+      setEmployeeList(
+        employeeList.map((val) =>
+          val.id === id
+            ? {
+                id: val.id,
+                name: val.name,
+                country: val.country,
+                age: val.age,
+                position: val.position,
+                wage: newWage,
+              }
+            : val
+        )
+      );
+    });
+  };
+
+  const deleteEmployee = (id) => {
+    Axios.delete(`http://localhost:3001/delete/${id}`).then((response) => {
+      setEmployeeList(employeeList.filter((val) => val.id !== id));
+    });
+  };
   const [open, setOpen] = useState(null);
 
   const [page, setPage] = useState(0);
@@ -149,16 +211,16 @@ export default function UserPage() {
   return (
     <>
       <Helmet>
-        <title> User | Minimal UI </title>
+        <title> ข้อมูลพนักงาน </title>
       </Helmet>
 
       <Container>
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
           <Typography variant="h4" gutterBottom>
-            User
+            ข้อมูลพนักงาน
           </Typography>
-          <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />}>
-            New User
+          <Button variant="outlined" startIcon={<Iconify icon="eva:plus-fill" />}>
+            เพิ่ม/ พนักงานใหม่
           </Button>
         </Stack>
 
@@ -184,18 +246,15 @@ export default function UserPage() {
 
                     return (
                       <TableRow hover key={id} tabIndex={-1} role="checkbox" selected={selectedUser}>
+                        <TableCell align="right">
+                          <IconButton size="large" color="inherit" onClick={handleOpenMenu}>
+                            <Iconify icon={'eva:more-vertical-fill'} />
+                          </IconButton>
+                        </TableCell>
                         <TableCell padding="checkbox">
                           <Checkbox checked={selectedUser} onChange={(event) => handleClick(event, name)} />
                         </TableCell>
-
-                        <TableCell component="th" scope="row" padding="none">
-                          <Stack direction="row" alignItems="center" spacing={2}>
-                            <Avatar alt={name} src={avatarUrl} />
-                            <Typography variant="subtitle2" noWrap>
-                              {name}
-                            </Typography>
-                          </Stack>
-                        </TableCell>
+                        <TableCell align="left">{name}</TableCell>
 
                         <TableCell align="left">{company}</TableCell>
 
@@ -205,12 +264,6 @@ export default function UserPage() {
 
                         <TableCell align="left">
                           <Label color={(status === 'banned' && 'error') || 'success'}>{sentenceCase(status)}</Label>
-                        </TableCell>
-
-                        <TableCell align="right">
-                          <IconButton size="large" color="inherit" onClick={handleOpenMenu}>
-                            <Iconify icon={'eva:more-vertical-fill'} />
-                          </IconButton>
                         </TableCell>
                       </TableRow>
                     );
@@ -231,14 +284,9 @@ export default function UserPage() {
                             textAlign: 'center',
                           }}
                         >
-                          <Typography variant="h6" paragraph>
-                            Not found
-                          </Typography>
-
                           <Typography variant="body2">
-                            No results found for &nbsp;
-                            <strong>&quot;{filterName}&quot;</strong>.
-                            <br /> Try checking for typos or using complete words.
+                            ไม่พบข้อมูลของพนักงาน &nbsp;
+                            <strong>&quot;{filterName}&quot;</strong>
                           </Typography>
                         </Paper>
                       </TableCell>
@@ -265,12 +313,12 @@ export default function UserPage() {
         open={Boolean(open)}
         anchorEl={open}
         onClose={handleCloseMenu}
-        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right-top' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         PaperProps={{
           sx: {
             p: 1,
-            width: 140,
+            width: 100,
             '& .MuiMenuItem-root': {
               px: 1,
               typography: 'body2',
@@ -281,12 +329,12 @@ export default function UserPage() {
       >
         <MenuItem>
           <Iconify icon={'eva:edit-fill'} sx={{ mr: 2 }} />
-          Edit
+          แก้ไข
         </MenuItem>
 
         <MenuItem sx={{ color: 'error.main' }}>
           <Iconify icon={'eva:trash-2-outline'} sx={{ mr: 2 }} />
-          Delete
+          ลบ
         </MenuItem>
       </Popover>
     </>
